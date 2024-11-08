@@ -1,0 +1,11 @@
+Discriminators.ipynb
+Discriminators.py
+HiFiGAN.html
+HiFiGAN_files/
+HiFiGAN_with_JAX/
+LJSpeech-1.1.tar.bz2
+__pycache__/
+_extensions/
+checkpoints/
+dataset/
+runs/
