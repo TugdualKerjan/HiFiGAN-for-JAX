@@ -9,3 +9,16 @@ _extensions/
 checkpoints/
 dataset/
 runs/
+extend_vocab_config.py
+download_checkpoint.py
+copy-weights.py
+model.pth
+requirements.txt
+Readme.md
+train_dvae_xtts.py
+train_dvae_xtts.sh
+train_gpt_xtts.py
+train_gpt_xtts.sh
+recipes/**
+TTS/**
+config.json
