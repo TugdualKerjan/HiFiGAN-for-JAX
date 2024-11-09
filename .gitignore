@@ -12,8 +12,7 @@ runs/
 extend_vocab_config.py
 download_checkpoint.py
 copy-weights.py
-model.pth
-requirements.txt
+model.pth   
 Readme.md
 train_dvae_xtts.py
 train_dvae_xtts.sh
