@@ -22,3 +22,5 @@ train_gpt_xtts.sh
 recipes/**
 TTS/**
 config.json
+XTTSv2-Finetuning-for-New-Languages/**
+
