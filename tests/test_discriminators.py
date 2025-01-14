@@ -1,5 +1,3 @@
-import optax
-import equinox as eqx
 import jax
 import jax.numpy as jnp
 import pytest
@@ -9,9 +7,6 @@ from hifigan import (
     DiscriminatorS,
     MultiPeriodDiscriminator,
     MultiScaleDiscriminator,
-    calculate_disc_loss,
-    calculate_gan_loss,
-    make_step,
 )
 
 

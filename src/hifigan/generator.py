@@ -1,7 +1,6 @@
 import equinox as eqx
 import equinox.nn as nn
 import jax
-import jax.numpy as jnp
 
 LRELU_SLOPE = 0.1
 
@@ -100,9 +99,7 @@ class Generator(eqx.Module):
         if key is None:
             raise ValueError("The 'key' parameter cannot be None.")
         key, grab = jax.random.split(key, 2)
-        self.conv_pre = nn.Conv1d(
-            channels_in, h_u, kernel_size=7, dilation=1, padding=3, key=grab
-        )
+        self.conv_pre = nn.Conv1d(channels_in, h_u, kernel_size=7, dilation=1, padding=3, key=grab)
 
         # This is where the magic happens. Upsample aggressively then more slowly.
         # TODO could play around with this.
