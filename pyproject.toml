@@ -1,0 +1,44 @@
+[project]
+name = "hifigan-eqx"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "equinox>=0.11.11",
+    "ipython>=8.31.0",
+    "jax>=0.4.38",
+    "matplotlib>=3.10.0",
+    "nbconvert>=7.16.5",
+    "nbformat>=5.10.4",
+    "optax>=0.2.4",
+    "pytest>=8.3.4",
+    "tensorboardx>=2.6.2.2",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.9.1",
+]
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+]
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]
+pythonpath = "src"

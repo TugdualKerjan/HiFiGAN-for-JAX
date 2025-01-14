@@ -1,6 +1,6 @@
 # HiFiGAN-for-JAX
 
-[![Project Status: Working](https://img.shields.io/badge/status-working-brightgreen.svg)](https://github.com/yourusername/Audio-VQVAE-for-JAX)
+[![Project Status: Working](https://img.shields.io/badge/status-working-brightgreen.svg)](https://tugdual.fr/HiFiGAN-for-JAX/)
 
 A JAX-based implementation of HiFiGAN, heavily based on XTTS. This model is part of the JAXTTS (eXtended Text-To-Speech) series, where I rewrite XTTS in JAX to understand how it works from A to Z, and learn JAX along the way.
 
