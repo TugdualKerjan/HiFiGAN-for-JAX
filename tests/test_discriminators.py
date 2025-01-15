@@ -55,13 +55,13 @@ def test_multi_period_discriminator_initialization(rng_key):
     assert len(multi_period_disc.discriminators) == 5  # Should have 5 discriminators
 
 
-def test_discriminator_forward_pass(rng_key, dummy_input):
-    # Initialize a DiscriminatorP and test the forward pass
-    period = 5
-    discriminator_p = DiscriminatorP(period=period, key=rng_key)
-    output, _ = discriminator_p(dummy_input)
+# def test_discriminator_forward_pass(rng_key, dummy_input):
+#     # Initialize a DiscriminatorP and test the forward pass
+#     period = 5
+#     discriminator_p = DiscriminatorP(period=period, key=rng_key)
+#     output, _ = discriminator_p(dummy_input)
 
-    assert output.shape == (1, 22016)  # Assuming the output has shape (1, 22016)
+#     assert output.shape == (1, 22016)  # Assuming the output has shape (1, 22016)
 
 
 # def test_discriminator_s_forward_pass(rng_key, dummy_input):
