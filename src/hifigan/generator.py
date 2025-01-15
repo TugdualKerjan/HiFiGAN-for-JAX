@@ -140,7 +140,6 @@ class Generator(eqx.Module):
             use_bias=False,
             key=key,
         )
-        # self.post_magic = nn.WeightNorm(self.post_magic,
 
     def __call__(self, x):
         y = self.norm(self.conv_pre)(x)

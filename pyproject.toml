@@ -5,15 +5,20 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "datasets>=3.2.0",
     "equinox>=0.11.11",
+    "ipykernel>=6.29.5",
     "ipython>=8.31.0",
     "jax>=0.4.38",
+    "librosa>=0.10.2.post1",
     "matplotlib>=3.10.0",
-    "nbconvert>=7.16.5",
-    "nbformat>=5.10.4",
+    "numpy>=2.0.0",
     "optax>=0.2.4",
     "pytest>=8.3.4",
+    "soundfile>=0.13.0",
     "tensorboardx>=2.6.2.2",
+    "torchaudio>=2.5.1",
+    "tqdm>=4.67.1",
 ]
 
 [dependency-groups]

@@ -6,8 +6,7 @@ from .discriminators import (
     MultiScaleDiscriminator,
 )
 from .generator import Generator
-from .losses import calculate_disc_loss, calculate_gan_loss
-from .trainer import make_step
+from .trainer import calculate_disc_loss, calculate_gan_loss, make_step
 
 # Explicitly expose these components when * is used
 __all__ = [
