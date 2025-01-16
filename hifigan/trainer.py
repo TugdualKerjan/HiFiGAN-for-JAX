@@ -1,23 +1,38 @@
 import equinox as eqx
 import jax
+import jax.numpy as jnp
+
+# from hifigan.utils import mel_spec_base
 
 
 @eqx.filter_value_and_grad
 def calculate_gan_loss(gan, period, scale, x, y):
     gan_result = jax.vmap(gan)(x)[:, :, :22016]  # TODO check this magic number
-    print(gan_result.shape)
-    fake_scale, _ = jax.vmap(scale)(gan_result)
-    fake_period, _ = jax.vmap(period)(gan_result)
+    # mel_gan_result = mel_spec_base(jnp.squeeze(gan_result))
 
-    l1_loss = jax.numpy.mean(jax.numpy.abs(gan_result - y))  # L1 loss
-    G_loss = 0
+    fake_scale, fake_feature_map_period = jax.vmap(scale)(gan_result)
+    fake_period, fake_feature_map_scale = jax.vmap(period)(gan_result)
+
+    _, real_feature_map_period = jax.vmap(scale)(y)
+    _, real_feature_map_scale = jax.vmap(period)(y)
+
+    loss = jnp.mean(jax.numpy.abs(gan_result - y)) * 45
     for fake in fake_period:
-        G_loss += jax.numpy.mean((fake - 1) ** 2)
+        loss += jnp.mean((fake - 1) ** 2)
     for fake in fake_scale:
-        G_loss += jax.numpy.mean((fake - 1) ** 2)
+        loss += jnp.mean((fake - 1) ** 2)
+
+    for a, b in zip(fake_feature_map_period, real_feature_map_period, strict=False):
+        for c, d in zip(a, b, strict=False):
+            loss += jnp.mean(jnp.abs(c - d))
+
+    for a, b in zip(fake_feature_map_scale, real_feature_map_scale, strict=False):
+        for c, d in zip(a, b, strict=False):
+            loss += jnp.mean(jnp.abs(c - d))
+
     # G_loss_scale = jax.numpy.mean((fake_scale - jax.numpy.ones(batch_size)) ** 2)
 
-    return G_loss + 45 * l1_loss  # TODO add config for the 30
+    return loss  # TODO add config for the 30
 
 
 @eqx.filter_value_and_grad
@@ -26,8 +41,8 @@ def calculate_disc_loss(model, fake, real):
     real_result, _ = jax.vmap(model)(real)
     loss = 0
     for fake_res, real_res in zip(fake_result, real_result, strict=False):
-        fake_loss = jax.numpy.mean((fake_res) ** 2)
-        real_loss = jax.numpy.mean((real_res - 1) ** 2)
+        fake_loss = jnp.mean((fake_res) ** 2)
+        real_loss = jnp.mean((real_res - 1) ** 2)
         loss += fake_loss + real_loss
 
     return loss
@@ -49,9 +64,6 @@ def make_step(
 ):
     print(type(x))
     result = jax.vmap(gan)(x)[:, :22016]
-
-    # trainable_scale, _ = eqx.partition(scale_disc, eqx.is_inexact_array)
-    # trainable_period, _ = eqx.partition(period_disc, eqx.is_inexact_array)
 
     loss_scale, grads_scale = calculate_disc_loss(scale_disc, result, y)
     updates, scale_optim = optim2.update(grads_scale, scale_optim, scale_disc)

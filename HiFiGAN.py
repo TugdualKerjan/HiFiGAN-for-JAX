@@ -5,14 +5,18 @@ import os
 import datasets
 import equinox as eqx
 import jax
-import jax.numpy as jnp
 import librosa
-import numpy as np
 import optax
 from librosa.util import normalize
 from tensorboardX import SummaryWriter
 
-from hifigan import Generator, MultiPeriodDiscriminator, MultiScaleDiscriminator, make_step
+from hifigan import (
+    Generator,
+    MultiPeriodDiscriminator,
+    MultiScaleDiscriminator,
+    make_step,
+    mel_spec_base,
+)
 
 SAMPLE_RATE = 22050
 SEGMENT_SIZE = 22016
@@ -45,21 +49,9 @@ def transform(sample):
         max_audio_start = wav.shape[0] - SEGMENT_SIZE
         audio_start = jax.random.randint(k, (1,), 0, max_audio_start)[0]
         wav = wav[audio_start : audio_start + SEGMENT_SIZE]
-    wav = np.expand_dims(wav, 0)
-    mel = librosa.feature.melspectrogram(
-        y=wav,
-        sr=22050,
-        n_fft=1024,
-        hop_length=256,
-        win_length=1024,
-        power=2,
-        window="hann",
-        n_mels=80,
-        fmax=8000,
-        fmin=0,
-    )
-    mel = jnp.squeeze(mel, 0)
-    mel = jnp.log(jnp.clip(mel, min=1e-5))  # Spectral normalization
+
+    mel = mel_spec_base(wav=wav)
+
     return {"mel": mel, "audio": wav, "sample_rate": SAMPLE_RATE}
 
 
