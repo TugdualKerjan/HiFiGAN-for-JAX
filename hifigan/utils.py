@@ -13,8 +13,11 @@ def mel_spec_base(wav: jax.Array) -> jax.Array:
     Returns:
         jax.Array: (80, N) tensor
     """
-    wav = np.array(wav)
-    wav = np.expand_dims(wav, 0)
+    wav = np.pad(
+        wav,
+        ((0, 0), (int((1024 - 256) / 2), int((1024 - 256) / 2))),
+        mode="reflect",
+    )
     mel = librosa.feature.melspectrogram(
         y=wav,
         sr=22050,
@@ -24,7 +27,9 @@ def mel_spec_base(wav: jax.Array) -> jax.Array:
         power=2,
         window="hann",
         n_mels=80,
+        pad_mode="reflect",
         fmax=8000,
+        center=False,
         fmin=0,
     )
     mel = jnp.squeeze(mel, 0)

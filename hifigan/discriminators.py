@@ -59,6 +59,7 @@ class DiscriminatorP(eqx.Module):
         ]
         self.conv_post = nn.Conv2d(1024, 1, (3, 1), 1, padding="SAME", key=keys[5])
 
+    # @jax.jit
     def pad_and_reshape(self, x):
         c, t = x.shape
         n_pad = (self.period - (t % self.period)) % self.period
@@ -66,6 +67,7 @@ class DiscriminatorP(eqx.Module):
         t_new = x_padded.shape[-1] // self.period
         return x_padded.reshape(c, t_new, self.period)
 
+    # @jax.jit
     def __call__(self, x):
         # Feature map for loss
         fmap = []
@@ -100,6 +102,7 @@ class DiscriminatorS(eqx.Module):
         ]
         self.conv_post = nn.Conv1d(1024, 1, 3, 1, padding=1, key=key8)
 
+    # @jax.jit
     def __call__(self, x):
         # Feature map for loss
         fmap = []
@@ -150,7 +153,9 @@ class MultiPeriodDiscriminator(eqx.Module):
     def __init__(self, periods=(2, 3, 5, 7, 11), key: jax.Array = None):
         self.discriminators = [
             DiscriminatorP(period, key=y)
-            for period, y in zip(periods, jax.random.split(key, len(periods)), strict=False)
+            for period, y in zip(
+                periods, jax.random.split(key, len(periods)), strict=False
+            )
         ]
 
     def __call__(self, x):

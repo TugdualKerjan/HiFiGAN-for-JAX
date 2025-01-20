@@ -9,6 +9,10 @@ import librosa
 import optax
 from librosa.util import normalize
 from tensorboardX import SummaryWriter
+import matplotlib.pyplot as plt
+
+import numpy as np
+from tqdm import tqdm
 
 from hifigan import (
     Generator,
@@ -19,7 +23,7 @@ from hifigan import (
 )
 
 SAMPLE_RATE = 22050
-SEGMENT_SIZE = 22016
+SEGMENT_SIZE = 8192
 RANDOM = jax.random.key(0)
 LEARNING_RATE = 2e-4
 CHECKPOINT_PATH = "checkpoints"
@@ -50,16 +54,17 @@ def transform(sample):
         audio_start = jax.random.randint(k, (1,), 0, max_audio_start)[0]
         wav = wav[audio_start : audio_start + SEGMENT_SIZE]
 
+    wav = np.expand_dims(wav, 0)
     mel = mel_spec_base(wav=wav)
-
+    # print(mel.shape)
     return {"mel": mel, "audio": wav, "sample_rate": SAMPLE_RATE}
 
 
 lj_speech_data = datasets.load_dataset("keithito/lj_speech", trust_remote_code=True)
 
 lj_speech_data = lj_speech_data.map(transform)
-
 lj_speech_data = lj_speech_data.with_format("jax")
+# print(lj_speech_data["train"]["mel"][0].shape)
 
 lj_speech_data = lj_speech_data["train"].train_test_split(0.01)
 
@@ -106,14 +111,28 @@ scale_optim = optim2.init(discriminator_s)  # type: ignore
 optim3 = optax.adam(1e-4)
 period_optim = optim3.init(discriminator_p)  # type: ignore
 
-writer = SummaryWriter(log_dir="./runs/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
+writer = SummaryWriter(
+    log_dir="./runs/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+)
 
 epochs = 100
-batch_size = 32
+batch_size = 2
+
+
+def plot_spectrogram(spectrogram):
+    fig, ax = plt.subplots(figsize=(10, 2))
+    im = ax.imshow(spectrogram, aspect="auto", origin="lower", interpolation="none")
+    plt.colorbar(im, ax=ax)
+
+    fig.canvas.draw()
+    plt.close()
+
+    return fig
+
 
 for epoch in range(starting_epoch, N_EPOCHS):
     train_data = train_data.shuffle(seed=epoch)
-    for i, batch in enumerate(train_data.iter(batch_size=BATCH_SIZE)):
+    for i, batch in tqdm(enumerate(train_data.iter(batch_size=BATCH_SIZE))):
         # print(batch["audio"][0])
         mels, wavs = batch["mel"], batch["audio"]
 
@@ -148,3 +167,13 @@ for epoch in range(starting_epoch, N_EPOCHS):
         writer.add_scalar("Loss/Generator", gan_loss, step)
         writer.add_scalar("Loss/Multi Period", period_loss, step)
         writer.add_scalar("Loss/Multi Scale", scale_loss, step)
+        writer.add_figure(
+            "generated/y_hat_spec",
+            plot_spectrogram(np.array(output[0])),
+            step,
+        )
+        writer.add_figure(
+            "generated/y_spec",
+            plot_spectrogram(np.array(mels[0])),
+            step,
+        )

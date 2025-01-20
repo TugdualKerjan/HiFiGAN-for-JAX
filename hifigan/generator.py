@@ -44,6 +44,7 @@ class ResBlock(eqx.Module):
             for y in jax.random.split(key, 3)
         ]
 
+    # @jax.jit
     def __call__(self, x):
         for c1, c2 in zip(self.conv_dil, self.conv_straight, strict=False):
             y = jax.nn.leaky_relu(x, LRELU_SLOPE)
@@ -71,6 +72,7 @@ class MRF(eqx.Module):
             )
         ]
 
+    # @jax.jit
     def __call__(self, x):
         y = self.resblocks[0](x)
         for block in self.resblocks[1:]:
@@ -99,7 +101,9 @@ class Generator(eqx.Module):
         if key is None:
             raise ValueError("The 'key' parameter cannot be None.")
         key, grab = jax.random.split(key, 2)
-        self.conv_pre = nn.Conv1d(channels_in, h_u, kernel_size=7, dilation=1, padding=3, key=grab)
+        self.conv_pre = nn.Conv1d(
+            channels_in, h_u, kernel_size=7, dilation=1, padding=3, key=grab
+        )
 
         # This is where the magic happens. Upsample aggressively then more slowly.
         # TODO could play around with this.
@@ -141,6 +145,7 @@ class Generator(eqx.Module):
             key=key,
         )
 
+    # @jax.jit
     def __call__(self, x):
         y = self.norm(self.conv_pre)(x)
 
