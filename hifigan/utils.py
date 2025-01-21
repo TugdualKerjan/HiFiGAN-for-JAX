@@ -43,7 +43,7 @@ from jax import numpy as jnp, lax
 from typing import Any, Optional
 
 
-@jax.jit
+# @jax.jit
 def batch_pad(xs, pad: int, mode="reflect"):
     if xs.ndim == 2:
         pad_arg = [(0, 0), (pad, pad)]
@@ -55,7 +55,7 @@ def batch_pad(xs, pad: int, mode="reflect"):
     return xs
 
 
-@jax.jit
+# @jax.jit
 def _conv_dimension_numbers(input_shape):
     """Computes the dimension numbers based on the input shape."""
     ndim = len(input_shape)
@@ -65,7 +65,7 @@ def _conv_dimension_numbers(input_shape):
     return lax.ConvDimensionNumbers(lhs_spec, rhs_spec, out_spec)
 
 
-@jax.jit
+# @jax.jit
 def stft(
     inputs: jnp.ndarray,
     n_fft: int,
@@ -357,7 +357,7 @@ def spectrogram(
     return spec_f
 
 
-@jax.jit
+# @jax.jit
 def apply_melscale(
     spectrogram: jnp.array,
     precision: Any = lax.Precision.HIGHEST,
@@ -385,7 +385,7 @@ def apply_melscale(
     return melspec
 
 
-@jax.jit
+# @jax.jit
 def mel_spec_base_jit(wav: jax.Array) -> jax.Array:
     """Mel transform, takes in 22050 Hz signal
 

@@ -10,7 +10,6 @@ import optax
 from librosa.util import normalize
 from tensorboardX import SummaryWriter
 import matplotlib.pyplot as plt
-import jax.numpy as jnp
 import numpy as np
 from tqdm import tqdm
 
@@ -19,7 +18,7 @@ from hifigan import (
     MultiPeriodDiscriminator,
     MultiScaleDiscriminator,
     make_step,
-    mel_spec_base,
+    mel_spec_base_jit,
 )
 from hifigan.utils import mel_spec_base_jit
 
@@ -63,11 +62,11 @@ def transform(sample):
 
 lj_speech_data = datasets.load_dataset("keithito/lj_speech", trust_remote_code=True)
 
-lj_speech_data = lj_speech_data.map(transform)
+lj_speech_data = lj_speech_data["train"].take(1000).map(transform)
 lj_speech_data = lj_speech_data.with_format("jax")
 # print(lj_speech_data["train"]["mel"][0].shape)
 
-lj_speech_data = lj_speech_data["train"].train_test_split(0.01)
+lj_speech_data = lj_speech_data.train_test_split(0.01)
 
 train_data, eval_data = lj_speech_data["train"], lj_speech_data["test"]
 
@@ -130,14 +129,15 @@ def plot_spectrogram(spectrogram):
 
 for epoch in range(starting_epoch, N_EPOCHS):
     # permutation = jax.random.permutation(jax.random.key(epoch), jnp.arange(0))
-    for i in range(train_data.num_rows // BATCH_SIZE):
-        # print(batch["audio"][0])
-        k, RANDOM = jax.random.split(RANDOM)
+    # for i in tqdm(range(train_data.num_rows // BATCH_SIZE)):
+    for i, batch in tqdm(enumerate(train_data.iter(batch_size=BATCH_SIZE))):
+        # # print(batch["audio"][0])
+        # k, RANDOM = jax.random.split(RANDOM)
 
-        mels, wavs = jax.random.choice(
-            k, train_data["mel"], (BATCH_SIZE,)
-        ), jax.random.choice(k, train_data["audio"], (BATCH_SIZE,))
-
+        # mels, wavs = jax.random.choice(
+        #     k, train_data["mel"], (BATCH_SIZE,)
+        # ), jax.random.choice(k, train_data["audio"], (BATCH_SIZE,))
+        mels, wavs = batch["mel"], batch["audio"]
         # Terrifying
         (
             gan_loss,

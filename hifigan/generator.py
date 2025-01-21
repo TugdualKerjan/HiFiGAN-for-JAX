@@ -44,7 +44,7 @@ class ResBlock(eqx.Module):
             for y in jax.random.split(key, 3)
         ]
 
-    # @jax.jit
+    @jax.jit
     def __call__(self, x):
         for c1, c2 in zip(self.conv_dil, self.conv_straight, strict=False):
             y = jax.nn.leaky_relu(x, LRELU_SLOPE)

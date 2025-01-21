@@ -7,7 +7,7 @@ from .discriminators import (
 )
 from .generator import Generator
 from .trainer import calculate_disc_loss, calculate_gan_loss, make_step
-from .utils import mel_spec_base
+from .utils import mel_spec_base, mel_spec_base_jit
 
 # Explicitly expose these components when * is used
 __all__ = [
@@ -20,4 +20,5 @@ __all__ = [
     "calculate_gan_loss",
     "make_step",
     "mel_spec_base",
+    "mel_spec_base_jit",
 ]

@@ -102,7 +102,7 @@ class DiscriminatorS(eqx.Module):
         ]
         self.conv_post = nn.Conv1d(1024, 1, 3, 1, padding=1, key=key8)
 
-    # @jax.jit
+    @jax.jit
     def __call__(self, x):
         # Feature map for loss
         fmap = []
