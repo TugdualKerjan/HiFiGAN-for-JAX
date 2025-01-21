@@ -2,13 +2,14 @@ import equinox as eqx
 import jax
 import jax.numpy as jnp
 
-from hifigan.utils import mel_spec_base
+from hifigan.utils import mel_spec_base_jit
 
 
 @eqx.filter_value_and_grad
 def calculate_gan_loss(gan, period, scale, x, y):
     gan_result = jax.vmap(gan)(x)  # TODO check this magic number
-    mel_gan_result = jax.vmap(mel_spec_base)(jnp.squeeze(gan_result, 1))
+    # print(gan_result.shape)
+    mel_gan_result = jax.vmap(mel_spec_base_jit)(gan_result)
 
     fake_scale, fake_feature_map_period = jax.vmap(scale)(gan_result)
     fake_period, fake_feature_map_scale = jax.vmap(period)(gan_result)
@@ -86,5 +87,5 @@ def make_step(
         gan_optim,
         period_optim,
         scale_optim,
-        result,
+        jax.vmap(mel_spec_base_jit)(result),
     )

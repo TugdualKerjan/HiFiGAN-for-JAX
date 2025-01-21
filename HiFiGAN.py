@@ -10,7 +10,7 @@ import optax
 from librosa.util import normalize
 from tensorboardX import SummaryWriter
 import matplotlib.pyplot as plt
-
+import jax.numpy as jnp
 import numpy as np
 from tqdm import tqdm
 
@@ -21,6 +21,7 @@ from hifigan import (
     make_step,
     mel_spec_base,
 )
+from hifigan.utils import mel_spec_base_jit
 
 SAMPLE_RATE = 22050
 SEGMENT_SIZE = 8192
@@ -30,7 +31,7 @@ CHECKPOINT_PATH = "checkpoints"
 INIT_FROM = "scratch"
 
 N_EPOCHS = 32
-BATCH_SIZE = 32
+BATCH_SIZE = 16
 
 
 def transform(sample):
@@ -55,7 +56,7 @@ def transform(sample):
         wav = wav[audio_start : audio_start + SEGMENT_SIZE]
 
     wav = np.expand_dims(wav, 0)
-    mel = mel_spec_base(wav=wav)
+    mel = mel_spec_base_jit(wav=wav)
     # print(mel.shape)
     return {"mel": mel, "audio": wav, "sample_rate": SAMPLE_RATE}
 
@@ -70,7 +71,7 @@ lj_speech_data = lj_speech_data["train"].train_test_split(0.01)
 
 train_data, eval_data = lj_speech_data["train"], lj_speech_data["test"]
 
-
+# data = data.filter(lambda x: x["label"] == 1)
 k1, k2, k3 = jax.random.split(RANDOM, 3)
 generator = Generator(channels_in=80, channels_out=1, key=k1)
 discriminator_s = MultiScaleDiscriminator(key=k2)
@@ -115,9 +116,6 @@ writer = SummaryWriter(
     log_dir="./runs/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 )
 
-epochs = 100
-batch_size = 2
-
 
 def plot_spectrogram(spectrogram):
     fig, ax = plt.subplots(figsize=(10, 2))
@@ -131,10 +129,14 @@ def plot_spectrogram(spectrogram):
 
 
 for epoch in range(starting_epoch, N_EPOCHS):
-    train_data = train_data.shuffle(seed=epoch)
-    for i, batch in tqdm(enumerate(train_data.iter(batch_size=BATCH_SIZE))):
+    # permutation = jax.random.permutation(jax.random.key(epoch), jnp.arange(0))
+    for i in range(train_data.num_rows // BATCH_SIZE):
         # print(batch["audio"][0])
-        mels, wavs = batch["mel"], batch["audio"]
+        k, RANDOM = jax.random.split(RANDOM)
+
+        mels, wavs = jax.random.choice(
+            k, train_data["mel"], (BATCH_SIZE,)
+        ), jax.random.choice(k, train_data["audio"], (BATCH_SIZE,))
 
         # Terrifying
         (
@@ -177,3 +179,4 @@ for epoch in range(starting_epoch, N_EPOCHS):
             plot_spectrogram(np.array(mels[0])),
             step,
         )
+    eqx.tree_serialise_leaves("./generator.eqx", generator)
