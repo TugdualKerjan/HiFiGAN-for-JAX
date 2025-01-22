@@ -72,7 +72,7 @@ CHECKPOINT_PATH = "checkpoints"
 INIT_FROM = "scratch"
 
 N_EPOCHS = 1000
-BATCH_SIZE = 512
+BATCH_SIZE = 256
 
 
 def transform(sample):
@@ -218,7 +218,7 @@ def plot_spectrogram(spectrogram):
 
 
 # batched_data = train_data.with_format("jax").iter(batch_size=BATCH_SIZE)
-
+step = 0
 # Timing stats dictionary
 timing_stats = defaultdict(list)
 
@@ -273,7 +273,7 @@ for epoch in range(starting_epoch, N_EPOCHS):
             output,
         ) = results
 
-        step = epoch * train_data.num_rows + i
+        step += 1
         writer.add_scalar("Loss/Generator", gan_loss, step)
         writer.add_scalar("Loss/Multi Period", period_loss, step)
         writer.add_scalar("Loss/Multi Scale", scale_loss, step)

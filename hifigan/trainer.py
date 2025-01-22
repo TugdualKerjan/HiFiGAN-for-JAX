@@ -51,7 +51,7 @@ def calculate_disc_loss(model, fake, real):
     return loss
 
 
-@eqx.filter_jit
+@eqx.filter_jit(donate="all")
 def make_step(
     gan,
     period_disc,
