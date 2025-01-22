@@ -119,7 +119,7 @@ def mel_spec_base_jit(wav: jax.Array) -> jax.Array:
     spec_power = jnp.sqrt(jnp.real(spec) ** 2 + jnp.imag(spec) ** 2 + 1e-9)
 
     # Apply mel filterbank and log transform
-    mel = jnp.matmul(spec_power, MEL_FILTERBANK)
+    mel = jnp.matmul(spec_power, MEL_FILTERBANK, precision="highest")
     mel = jnp.log(jnp.clip(mel, min=1e-5))
 
     # Final shape adjustments

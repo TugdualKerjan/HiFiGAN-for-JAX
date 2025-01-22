@@ -1,16 +1,23 @@
+from collections import defaultdict
 import datetime
 import json
 import os
+import time
 
 import datasets
 import equinox as eqx
 import jax
+import jax.numpy as jnp
 
 os.makedirs("/tmp/jax_cache", exist_ok=True)
 
 # os.environ["XLA_FLAGS"] = (
 #     "--xla_gpu_enable_persistent_cache=true --xla_gpu_cache_dir=/tmp/jax_cache"
 # )
+
+from jax import config
+
+config.update("jax_debug_nans", True)
 
 # Configure JAX caching
 jax.config.update("jax_enable_compilation_cache", True)
@@ -64,8 +71,8 @@ LEARNING_RATE = 2e-4
 CHECKPOINT_PATH = "checkpoints"
 INIT_FROM = "scratch"
 
-N_EPOCHS = 1
-BATCH_SIZE = 16
+N_EPOCHS = 1000
+BATCH_SIZE = 512
 
 
 def transform(sample):
@@ -91,24 +98,48 @@ def transform(sample):
         wav = wav[audio_start : audio_start + SEGMENT_SIZE]
 
     wav = np.expand_dims(wav, 0)
+
     mel = mel_spec_base_jit(wav=wav)
     # print(mel.shape)
-    return {"mel": mel, "audio": wav, "sample_rate": SAMPLE_RATE}
+    return {"mel": np.array(mel), "audio": np.array(wav), "sample_rate": SAMPLE_RATE}
 
 
-lj_speech_data = datasets.load_dataset("keithito/lj_speech", trust_remote_code=True)
+# lj_speech_data = datasets.load_dataset("keithito/lj_speech", trust_remote_code=True)
 
 # lj_speech_data = lj_speech_data.map(transform)
+
+# from datasets import Features, Array2D, Value
+
+# # Define the exact shapes we expect from the transform function
+# features = Features(
+#     {
+#         "mel": Array2D(
+#             shape=(80, 32), dtype="float32"
+#         ),  # From mel_spec_base_jit output
+#         "audio": Array2D(shape=(1, 8192), dtype="float32"),  # From expand_dims(wav, 0)
+#         "sample_rate": Value(dtype="int64"),
+#     }
+# )
+
+# lj_speech_data = datasets.load_dataset(
+#     "keithito/lj_speech", trust_remote_code=True
+# ).with_format("jax")
+# lj_speech_data = lj_speech_data.map(
+#     transform,
+#     # num_proc=8,
+#     features=features,
+#     remove_columns=lj_speech_data["train"].column_names,  # Remove original columns
+# )
+
+
 # lj_speech_data.save_to_disk("transformed_lj_speech")
 lj_speech_data = datasets.load_from_disk("transformed_lj_speech")
 lj_speech_data = lj_speech_data.with_format("jax")
-# print(lj_speech_data["train"]["mel"][0].shape)
 
 lj_speech_data = lj_speech_data["train"].train_test_split(0.01)
 
 train_data, eval_data = lj_speech_data["train"], lj_speech_data["test"]
 
-# data = data.filter(lambda x: x["label"] == 1)
 k1, k2, k3 = jax.random.split(RANDOM, 3)
 generator = Generator(channels_in=80, channels_out=1, key=k1)
 discriminator_s = MultiScaleDiscriminator(key=k2)
@@ -172,52 +203,109 @@ def plot_spectrogram(spectrogram):
     return fig
 
 
-with jax.profiler.trace("./tmp/jax-trace"):
-    for epoch in range(starting_epoch, N_EPOCHS):
-        # permutation = jax.random.permutation(jax.random.key(epoch), jnp.arange(0))
-        # for i in tqdm(range(train_data.num_rows // BATCH_SIZE)):
-        for i, batch in tqdm(enumerate(train_data.iter(batch_size=BATCH_SIZE))):
-            with jax.profiler.StepTraceAnnotation("step", step_num=i):
-                mels, wavs = batch["mel"], batch["audio"]
-                # Terrifying
-                (
-                    gan_loss,
-                    period_loss,
-                    scale_loss,
-                    generator,
-                    period_disc,
-                    scale_disc,
-                    gan_optim,
-                    period_optim,
-                    scale_optim,
-                    output,
-                ) = make_step(
-                    generator,
-                    discriminator_p,
-                    discriminator_s,
-                    mels,
-                    wavs,
-                    gan_optim,
-                    period_optim,
-                    scale_optim,
-                    optim1,
-                    optim2,
-                    optim3,
-                )
+# pouet_audio = train_data["audio"]
+# pouet_mel = train_data["mel"]
 
-                step = epoch * train_data.num_rows + i
-                # Log codebook updates to TensorBoard
-                writer.add_scalar("Loss/Generator", gan_loss, step)
-                writer.add_scalar("Loss/Multi Period", period_loss, step)
-                writer.add_scalar("Loss/Multi Scale", scale_loss, step)
-                writer.add_figure(
-                    "generated/y_hat_spec",
-                    plot_spectrogram(np.array(output[0])),
-                    step,
-                )
-                writer.add_figure(
-                    "generated/y_spec",
-                    plot_spectrogram(np.array(mels[0])),
-                    step,
-                )
+
+# def get_batches(dataset, batch_size):
+#     print("h")
+#     indices = jnp.arange(len(dataset))
+#     # Optionally shuffle indices here
+
+#     for i in range(0, len(dataset), batch_size):
+#         batch_idx = indices[i : i + batch_size]
+#         yield {"mel": pouet_mel[batch_idx], "audio": pouet_audio[batch_idx]}
+
+
+# batched_data = train_data.with_format("jax").iter(batch_size=BATCH_SIZE)
+
+# Timing stats dictionary
+timing_stats = defaultdict(list)
+
+for epoch in range(starting_epoch, N_EPOCHS):
+    epoch_start = time.time()
+    wait_start = time.time()
+    # print("wtf")
+    # RANDOM, k = jax.random.split(RANDOM)
+    # permutation = jax.random.permutation(k, jnp.arange(0, pouet_audio.shape[0]))
+    for i, batch in enumerate(train_data.iter(batch_size=BATCH_SIZE)):
+
+        wait_time = time.time() - wait_start
+
+        # Measure data loading time
+        data_load_start = time.time()
+        # mels = pouet_mel[permutation[i : i + BATCH_SIZE]]
+        # wavs = pouet_audio[permutation[i : i + BATCH_SIZE]]
+        mels, wavs = batch["mel"], batch["audio"]
+        data_load_time = time.time() - data_load_start
+
+        # Measure training step time
+        train_start = time.time()
+        results = make_step(
+            generator,
+            discriminator_p,
+            discriminator_s,
+            mels,
+            wavs,
+            gan_optim,
+            period_optim,
+            scale_optim,
+            optim1,
+            optim2,
+            optim3,
+        )
+        # Force sync for accurate timing
+        jax.block_until_ready(results)
+        train_time = time.time() - train_start
+
+        # Measure logging time
+        log_start = time.time()
+        (
+            gan_loss,
+            period_loss,
+            scale_loss,
+            generator,
+            period_disc,
+            scale_disc,
+            gan_optim,
+            period_optim,
+            scale_optim,
+            output,
+        ) = results
+
+        step = epoch * train_data.num_rows + i
+        writer.add_scalar("Loss/Generator", gan_loss, step)
+        writer.add_scalar("Loss/Multi Period", period_loss, step)
+        writer.add_scalar("Loss/Multi Scale", scale_loss, step)
+
+        if step % 5 == 0:
+            writer.add_figure(
+                "generated/y_hat_spec",
+                plot_spectrogram(np.array(output[0])),
+                step,
+            )
+            writer.add_figure(
+                "generated/y_spec",
+                plot_spectrogram(np.array(mels[0])),
+                step,
+            )
+        log_time = time.time() - log_start
+
+        # Store timing stats
+        timing_stats["data_loading"].append(data_load_time)
+        timing_stats["training"].append(train_time)
+        timing_stats["logging"].append(log_time)
+        timing_stats["wait_time"].append(wait_time)
+
+        # Print running averages every 10 steps
+        # if i % 1 == 0:
+        print(f"\nTiming stats (last 10 steps):")
+        print(f"Data loading: {np.mean(timing_stats['data_loading'][-1:]):.3f}s")
+        print(f"Training: {np.mean(timing_stats['training'][-1:]):.3f}s")
+        print(f"Logging: {np.mean(timing_stats['logging'][-1:]):.3f}s")
+        print(f"Iter wait: {np.mean(timing_stats['wait_time'][-1:]):.3f}s")
+
+        wait_start = time.time()
+
+    # Save model
     eqx.tree_serialise_leaves("./generator.eqx", generator)
