@@ -5,18 +5,24 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "datasets>=3.2.0",
+    "datasets[jax]>=3.2.0",
     "equinox>=0.11.11",
+    "etils>=1.11.0",
+    "importlib>=1.0.4",
+    "importlib-resources>=6.5.2",
     "ipykernel>=6.29.5",
     "ipython>=8.31.0",
     "jax[cuda]>=0.4.38",
+    "jaxtyping>=0.2.36",
     "librosa>=0.10.2.post1",
     "matplotlib>=3.10.0",
     "numpy>=2.0.0",
     "optax>=0.2.4",
     "pytest>=8.3.4",
     "soundfile>=0.13.0",
+    "tensorboard-plugin-profile>=2.18.0",
     "tensorboardx>=2.6.2.2",
+    "tensorflow>=2.18.0",
     "torchaudio>=2.5.1",
     "tqdm>=4.67.1",
 ]

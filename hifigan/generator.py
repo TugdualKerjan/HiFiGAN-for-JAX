@@ -44,7 +44,6 @@ class ResBlock(eqx.Module):
             for y in jax.random.split(key, 3)
         ]
 
-    @jax.jit
     def __call__(self, x):
         for c1, c2 in zip(self.conv_dil, self.conv_straight, strict=False):
             y = jax.nn.leaky_relu(x, LRELU_SLOPE)
@@ -72,7 +71,6 @@ class MRF(eqx.Module):
             )
         ]
 
-    # @jax.jit
     def __call__(self, x):
         y = self.resblocks[0](x)
         for block in self.resblocks[1:]:
@@ -145,7 +143,6 @@ class Generator(eqx.Module):
             key=key,
         )
 
-    # @jax.jit
     def __call__(self, x):
         y = self.norm(self.conv_pre)(x)
 

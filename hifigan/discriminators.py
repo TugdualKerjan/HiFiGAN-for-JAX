@@ -2,6 +2,8 @@ import equinox as eqx
 import equinox.nn as nn
 import jax
 import jax.numpy as jnp
+from jaxtyping import Array, Float, Int
+from typing import Dict, List, Mapping, Optional, Tuple
 
 LRELU_SLOPE = 0.1
 
@@ -59,7 +61,6 @@ class DiscriminatorP(eqx.Module):
         ]
         self.conv_post = nn.Conv2d(1024, 1, (3, 1), 1, padding="SAME", key=keys[5])
 
-    # @jax.jit
     def pad_and_reshape(self, x):
         c, t = x.shape
         n_pad = (self.period - (t % self.period)) % self.period
@@ -67,7 +68,6 @@ class DiscriminatorP(eqx.Module):
         t_new = x_padded.shape[-1] // self.period
         return x_padded.reshape(c, t_new, self.period)
 
-    # @jax.jit
     def __call__(self, x):
         # Feature map for loss
         fmap = []
@@ -102,7 +102,6 @@ class DiscriminatorS(eqx.Module):
         ]
         self.conv_post = nn.Conv1d(1024, 1, 3, 1, padding=1, key=key8)
 
-    @jax.jit
     def __call__(self, x):
         # Feature map for loss
         fmap = []
@@ -134,7 +133,9 @@ class MultiScaleDiscriminator(eqx.Module):
         ]
         # self.meanpool = nn.AvgPool1d(4, 2, padding=2)
 
-    def __call__(self, x):
+    def __call__(
+        self, x: Int[Array, "audio_array"]
+    ) -> Tuple[Float[Array, "predictions"], List[Float[Array, "features"]]]:
         preds = []
         fmaps = []
 

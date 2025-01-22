@@ -5,6 +5,7 @@ import jax.numpy as jnp
 from hifigan.utils import mel_spec_base_jit
 
 
+@eqx.filter_jit(donate="all")
 @eqx.filter_value_and_grad
 def calculate_gan_loss(gan, period, scale, x, y):
     gan_result = jax.vmap(gan)(x)  # TODO check this magic number
@@ -36,6 +37,7 @@ def calculate_gan_loss(gan, period, scale, x, y):
     return loss  # TODO add config for the 30
 
 
+# @eqx.filter_jit
 @eqx.filter_value_and_grad
 def calculate_disc_loss(model, fake, real):
     fake_result, _ = jax.vmap(model)(fake)
