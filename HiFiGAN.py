@@ -1,68 +1,38 @@
-from collections import defaultdict
 import datetime
 import json
 import os
 import time
+from collections import defaultdict
 
 import datasets
 import equinox as eqx
 import jax
-import jax.numpy as jnp
+import librosa
+import matplotlib.pyplot as plt
+import numpy as np
+import optax
+from beartype import beartype  # noqa: F401
+from jax import config
+from jaxtyping import install_import_hook
+from librosa.util import normalize
+from tensorboardX import SummaryWriter
+from tqdm import tqdm
+
+with install_import_hook("hifigan", "beartype.beartype"):
+    from hifigan import (
+        Generator,
+        MultiPeriodDiscriminator,
+        MultiScaleDiscriminator,
+        make_step,
+        mel_spec_base_jit,
+    )
 
 os.makedirs("/tmp/jax_cache", exist_ok=True)
 
-# os.environ["XLA_FLAGS"] = (
-#     "--xla_gpu_enable_persistent_cache=true --xla_gpu_cache_dir=/tmp/jax_cache"
-# )
-
-from jax import config
-
-config.update("jax_debug_nans", True)
-
-# Configure JAX caching
 jax.config.update("jax_enable_compilation_cache", True)
 jax.config.update("jax_persistent_cache_enable_xla_caches", "all")  # Cache everything
 jax.config.update("jax_persistent_cache_min_compile_time_secs", 0)  # Cache everything
 jax.config.update("jax_compilation_cache_dir", "/tmp/jax_cache")
-
-import librosa
-import optax
-from librosa.util import normalize
-from tensorboardX import SummaryWriter
-import matplotlib.pyplot as plt
-import numpy as np
-from tqdm import tqdm
-
-
-from hifigan import (
-    Generator,
-    MultiPeriodDiscriminator,
-    MultiScaleDiscriminator,
-    make_step,
-    mel_spec_base_jit,
-)
-
-
-# from jax import config
-# import logging
-
-# Enable both compilation logging and shape checking
-# config.update("jax_log_compiles", True)  # Basic logging
-
-# # Turn off most JAX logging
-# logging.getLogger("jax").setLevel(logging.ERROR)
-
-
-# # Custom filter to only show shapes
-# class ShapeFilter(logging.Filter):
-#     def filter(self, record):
-#         return "Compiling" in record.msg and "shapes and types" in record.msg
-
-
-# # Set up logger for shapes
-# shape_logger = logging.getLogger("jax._src.interpreters.pxla")
-# shape_logger.addFilter(ShapeFilter())
-# shape_logger.setLevel(logging.WARNING)
 
 SAMPLE_RATE = 22050
 SEGMENT_SIZE = 8192
@@ -141,7 +111,7 @@ lj_speech_data = lj_speech_data["train"].train_test_split(0.01)
 train_data, eval_data = lj_speech_data["train"], lj_speech_data["test"]
 
 k1, k2, k3 = jax.random.split(RANDOM, 3)
-generator = Generator(channels_in=80, channels_out=1, key=k1)
+generator = Generator(channels_in=80, channels_out=1, k0=k1)
 discriminator_s = MultiScaleDiscriminator(key=k2)
 discriminator_p = MultiPeriodDiscriminator(key=k3)
 
@@ -187,9 +157,7 @@ scale_optim = optim2.init(discriminator_s)  # type: ignore
 optim3 = optax.adam(1e-4)
 period_optim = optim3.init(discriminator_p)  # type: ignore
 
-writer = SummaryWriter(
-    log_dir="./runs/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-)
+writer = SummaryWriter(log_dir="./runs/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
 
 
 def plot_spectrogram(spectrogram):
@@ -229,7 +197,6 @@ for epoch in range(starting_epoch, N_EPOCHS):
     # RANDOM, k = jax.random.split(RANDOM)
     # permutation = jax.random.permutation(k, jnp.arange(0, pouet_audio.shape[0]))
     for i, batch in enumerate(train_data.iter(batch_size=BATCH_SIZE)):
-
         wait_time = time.time() - wait_start
 
         # Measure data loading time

@@ -1,6 +1,7 @@
 import equinox as eqx
 import equinox.nn as nn
 import jax
+from jaxtyping import Key, Array, Float
 
 LRELU_SLOPE = 0.1
 
@@ -15,7 +16,7 @@ class ResBlock(eqx.Module):
         channels: int,
         kernel_size: int = 3,
         dilation: int = 1,
-        key=None,
+        key: Key = None,
     ):
         if key is None:
             raise ValueError("The 'key' parameter cannot be None.")
@@ -44,7 +45,7 @@ class ResBlock(eqx.Module):
             for y in jax.random.split(key, 3)
         ]
 
-    def __call__(self, x):
+    def __call__(self, x: Float[Array, "..."]):
         for c1, c2 in zip(self.conv_dil, self.conv_straight, strict=False):
             y = jax.nn.leaky_relu(x, LRELU_SLOPE)
             y = self.norm(c1)(y)
@@ -71,7 +72,7 @@ class MRF(eqx.Module):
             )
         ]
 
-    def __call__(self, x):
+    def __call__(self, x: Float[Array, "..."]):
         y = self.resblocks[0](x)
         for block in self.resblocks[1:]:
             y += block(x)
@@ -89,19 +90,17 @@ class Generator(eqx.Module):
         self,
         channels_in: int,
         channels_out: int,
-        h_u=512,
-        k_u=(16, 16, 4, 4),
-        upsample_rate_decoder=(8, 8, 2, 2),
-        k_r=(3, 7, 11),
-        dilations=(1, 3, 5),
-        key=None,
+        h_u: int = 512,
+        k_u: tuple = (16, 16, 4, 4),
+        upsample_rate_decoder: tuple = (8, 8, 2, 2),
+        k_r: tuple = (3, 7, 11),
+        dilations: tuple = (1, 3, 5),
+        key: Key = None,
     ):
         if key is None:
             raise ValueError("The 'key' parameter cannot be None.")
-        key, grab = jax.random.split(key, 2)
-        self.conv_pre = nn.Conv1d(
-            channels_in, h_u, kernel_size=7, dilation=1, padding=3, key=grab
-        )
+        k0, k1 = jax.random.split(key, 2)
+        self.conv_pre = nn.Conv1d(channels_in, h_u, kernel_size=7, dilation=1, padding=3, key=k1)
 
         # This is where the magic happens. Upsample aggressively then more slowly.
         # TODO could play around with this.
@@ -127,7 +126,7 @@ class Generator(eqx.Module):
                 zip(
                     k_u,
                     upsample_rate_decoder,
-                    jax.random.split(key, len(k_u)),
+                    jax.random.split(k0, len(k_u)),
                     strict=False,
                 )
             )
@@ -140,10 +139,10 @@ class Generator(eqx.Module):
             stride=1,
             padding=3,
             use_bias=False,
-            key=key,
+            key=k0,
         )
 
-    def __call__(self, x):
+    def __call__(self, x: Float[Array, "num_mels time"]):
         y = self.norm(self.conv_pre)(x)
 
         for upsample, mrf in self.layers:

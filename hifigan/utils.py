@@ -1,10 +1,23 @@
+from functools import partial
+
 import jax
 import jax.numpy as jnp
 import librosa
 import numpy as np
+from jax import lax
+from jaxtyping import Array, Float, Int
+
+# Pre-compute static values
+SAMPLE_RATE = 22050
+N_FFT = 1024
+HOP_LENGTH = 256
+WIN_LENGTH = 1024
+N_MELS = 80
+WINDOW = jnp.hanning(WIN_LENGTH)
+PAD_SIZE = int((N_FFT - HOP_LENGTH) / 2)
 
 
-def mel_spec_base(wav: jax.Array) -> jax.Array:
+def mel_spec_base(wav: Float[Array, "audio"]) -> Float[Array, "num_mel time"]:
     """Mel transform, takes in 22050 Hz signal
 
     Args:
@@ -15,18 +28,18 @@ def mel_spec_base(wav: jax.Array) -> jax.Array:
     """
     wav = np.pad(
         wav,
-        ((0, 0), (int((1024 - 256) / 2), int((1024 - 256) / 2))),
+        ((0, 0), (PAD_SIZE, PAD_SIZE)),
         mode="reflect",
     )
     mel = librosa.feature.melspectrogram(
         y=wav,
-        sr=22050,
-        n_fft=1024,
-        hop_length=256,
-        win_length=1024,
+        sr=SAMPLE_RATE,
+        n_fft=N_FFT,
+        hop_length=HOP_LENGTH,
+        win_length=WIN_LENGTH,
         power=2,
         window="hann",
-        n_mels=80,
+        n_mels=N_MELS,
         pad_mode="reflect",
         fmax=8000,
         center=False,
@@ -35,23 +48,6 @@ def mel_spec_base(wav: jax.Array) -> jax.Array:
     mel = jnp.squeeze(mel, 0)
     mel = jnp.log(jnp.clip(mel, min=1e-5))  # Spectral normalization
     return mel
-
-
-import jax
-from jax import lax
-import jax.numpy as jnp
-import librosa
-import numpy as np
-from functools import partial
-
-# Pre-compute static values
-SAMPLE_RATE = 22050
-N_FFT = 1024
-HOP_LENGTH = 256
-WIN_LENGTH = 1024
-N_MELS = 80
-WINDOW = jnp.hanning(WIN_LENGTH)
-PAD_SIZE = int((N_FFT - HOP_LENGTH) / 2)
 
 
 # Pre-compute mel filterbank (this is static)
@@ -107,7 +103,7 @@ def stft_computation(wav, n_fft, hop_length):
 
 
 @jax.jit
-def mel_spec_base_jit(wav: jax.Array) -> jax.Array:
+def mel_spec_base_jit(wav: Float[Array, "audio"]) -> Float[Array, "num_mel time"]:
     """Mel transform, takes in 22050 Hz signal"""
     # Pad the input
     wav = jnp.pad(wav, ((0, 0), (PAD_SIZE, PAD_SIZE)), mode="reflect")
