@@ -2,8 +2,7 @@ import equinox as eqx
 import equinox.nn as nn
 import jax
 import jax.numpy as jnp
-from jaxtyping import Array, Float, Int
-from typing import Dict, List, Mapping, Optional, Tuple
+from jaxtyping import Array, Float, Key
 
 LRELU_SLOPE = 0.1
 
@@ -17,9 +16,9 @@ class DiscriminatorP(eqx.Module):
     def __init__(
         self,
         period: int,
-        kernel_size=5,
-        stride=3,
-        key: jax.Array = None,
+        kernel_size: int = 5,
+        stride: int = 3,
+        key: Key = None,
     ):
         self.period = period
 
@@ -68,7 +67,9 @@ class DiscriminatorP(eqx.Module):
         t_new = x_padded.shape[-1] // self.period
         return x_padded.reshape(c, t_new, self.period)
 
-    def __call__(self, x):
+    def __call__(
+        self, x: Float[Array, "1 audio_array"]
+    ) -> tuple[Float[Array, "1 output"], list[Float[Array, "channels time"]]]:
         # Feature map for loss
         fmap = []
 
@@ -88,7 +89,7 @@ class DiscriminatorS(eqx.Module):
     conv_post: nn.Conv1d
     norm = nn.WeightNorm
 
-    def __init__(self, key: jax.Array = None):
+    def __init__(self, key: Key = None):
         key1, key2, key3, key4, key5, key6, key7, key8 = jax.random.split(key, 8)
 
         self.layers = [
@@ -102,7 +103,9 @@ class DiscriminatorS(eqx.Module):
         ]
         self.conv_post = nn.Conv1d(1024, 1, 3, 1, padding=1, key=key8)
 
-    def __call__(self, x):
+    def __call__(
+        self, x: Float[Array, "1 audio_array"]
+    ) -> tuple[Float[Array, "1 output"], list[Float[Array, "channels time"]]]:
         # Feature map for loss
         fmap = []
 
@@ -123,7 +126,7 @@ class MultiScaleDiscriminator(eqx.Module):
     meanpool: nn.AvgPool1d = nn.AvgPool1d(4, 2, padding=2)
 
     # TODO need to add spectral norm things
-    def __init__(self, key: jax.Array = None):
+    def __init__(self, key: Key = None):
         key1, key2, key3 = jax.random.split(key, 3)
 
         self.discriminators = [
@@ -134,8 +137,11 @@ class MultiScaleDiscriminator(eqx.Module):
         # self.meanpool = nn.AvgPool1d(4, 2, padding=2)
 
     def __call__(
-        self, x: Int[Array, "audio_array"]
-    ) -> Tuple[Float[Array, "predictions"], List[Float[Array, "features"]]]:
+        self, x: Float[Array, "1 audio_array"]
+    ) -> tuple[
+        list[Float[Array, "1 output"]],
+        list[list[Float[Array, "channels time"]]],
+    ]:
         preds = []
         fmaps = []
 
@@ -151,15 +157,18 @@ class MultiScaleDiscriminator(eqx.Module):
 class MultiPeriodDiscriminator(eqx.Module):
     discriminators: list
 
-    def __init__(self, periods=(2, 3, 5, 7, 11), key: jax.Array = None):
+    def __init__(self, periods: tuple = (2, 3, 5, 7, 11), key: Key = None):
         self.discriminators = [
             DiscriminatorP(period, key=y)
-            for period, y in zip(
-                periods, jax.random.split(key, len(periods)), strict=False
-            )
+            for period, y in zip(periods, jax.random.split(key, len(periods)), strict=False)
         ]
 
-    def __call__(self, x):
+    def __call__(
+        self, x: Float[Array, "1 audio_array"]
+    ) -> tuple[
+        list[Float[Array, "1 output"]],
+        list[list[Float[Array, "channels time"]]],
+    ]:
         preds = []
         fmaps = []
 

@@ -19,3 +19,4 @@ TTS/**
 config.json
 XTTSv2-Finetuning-for-New-Languages/**
 play.ipynb
+transformed_lj_speech/
