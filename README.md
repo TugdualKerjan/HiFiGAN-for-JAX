@@ -32,7 +32,7 @@ git clone git@github.com:TugdualKerjan/hifigan-jax.git
 cd hifigan-jax
 uv sync
 uv add jax["cuda"] # JAX has various versions optimized for the underlying architecture
-uv run HiFiGAN.py
+uv run train_hifigan.py
 ```
 
 ## Things I've learned with this project

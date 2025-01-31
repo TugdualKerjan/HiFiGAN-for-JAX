@@ -1,38 +1,21 @@
-from collections import defaultdict
 import datetime
 import json
 import os
 import time
+from collections import defaultdict
 
 import datasets
 import equinox as eqx
 import jax
-import jax.numpy as jnp
-
-os.makedirs("/tmp/jax_cache", exist_ok=True)
-
-# os.environ["XLA_FLAGS"] = (
-#     "--xla_gpu_enable_persistent_cache=true --xla_gpu_cache_dir=/tmp/jax_cache"
-# )
-
-from jax import config
-
-config.update("jax_debug_nans", True)
-
-# Configure JAX caching
-jax.config.update("jax_enable_compilation_cache", True)
-jax.config.update("jax_persistent_cache_enable_xla_caches", "all")  # Cache everything
-jax.config.update("jax_persistent_cache_min_compile_time_secs", 0)  # Cache everything
-jax.config.update("jax_compilation_cache_dir", "/tmp/jax_cache")
-
 import librosa
-import optax
-from librosa.util import normalize
-from tensorboardX import SummaryWriter
 import matplotlib.pyplot as plt
 import numpy as np
+import optax
+from datasets import Array2D, Features, Value
+from jax import config
+from librosa.util import normalize
+from tensorboardX import SummaryWriter
 from tqdm import tqdm
-
 
 from hifigan import (
     Generator,
@@ -42,27 +25,15 @@ from hifigan import (
     mel_spec_base_jit,
 )
 
+os.makedirs("/tmp/jax_cache", exist_ok=True)
 
-# from jax import config
-# import logging
+config.update("jax_debug_nans", True)
 
-# Enable both compilation logging and shape checking
-# config.update("jax_log_compiles", True)  # Basic logging
-
-# # Turn off most JAX logging
-# logging.getLogger("jax").setLevel(logging.ERROR)
-
-
-# # Custom filter to only show shapes
-# class ShapeFilter(logging.Filter):
-#     def filter(self, record):
-#         return "Compiling" in record.msg and "shapes and types" in record.msg
-
-
-# # Set up logger for shapes
-# shape_logger = logging.getLogger("jax._src.interpreters.pxla")
-# shape_logger.addFilter(ShapeFilter())
-# shape_logger.setLevel(logging.WARNING)
+# Configure JAX caching
+jax.config.update("jax_enable_compilation_cache", True)
+jax.config.update("jax_persistent_cache_enable_xla_caches", "all")  # Cache everything
+jax.config.update("jax_persistent_cache_min_compile_time_secs", 0)  # Cache everything
+jax.config.update("jax_compilation_cache_dir", "/tmp/jax_cache")
 
 SAMPLE_RATE = 22050
 SEGMENT_SIZE = 8192
@@ -103,36 +74,28 @@ def transform(sample):
     # print(mel.shape)
     return {"mel": np.array(mel), "audio": np.array(wav), "sample_rate": SAMPLE_RATE}
 
-
-# lj_speech_data = datasets.load_dataset("keithito/lj_speech", trust_remote_code=True)
-
-# lj_speech_data = lj_speech_data.map(transform)
-
-# from datasets import Features, Array2D, Value
-
 # # Define the exact shapes we expect from the transform function
-# features = Features(
-#     {
-#         "mel": Array2D(
-#             shape=(80, 32), dtype="float32"
-#         ),  # From mel_spec_base_jit output
-#         "audio": Array2D(shape=(1, 8192), dtype="float32"),  # From expand_dims(wav, 0)
-#         "sample_rate": Value(dtype="int64"),
-#     }
-# )
+features = Features(
+    {
+        "mel": Array2D(
+            shape=(80, 32), dtype="float32"
+        ),  # From mel_spec_base_jit output
+        "audio": Array2D(shape=(1, 8192), dtype="float32"),  # From expand_dims(wav, 0)
+        "sample_rate": Value(dtype="int64"),
+    }
+)
 
-# lj_speech_data = datasets.load_dataset(
-#     "keithito/lj_speech", trust_remote_code=True
-# ).with_format("jax")
-# lj_speech_data = lj_speech_data.map(
-#     transform,
-#     # num_proc=8,
-#     features=features,
-#     remove_columns=lj_speech_data["train"].column_names,  # Remove original columns
-# )
+lj_speech_data = datasets.load_dataset(
+    "keithito/lj_speech", trust_remote_code=True
+).with_format("jax")
+lj_speech_data = lj_speech_data.map(
+    transform,
+    # num_proc=8,
+    features=features,
+    remove_columns=lj_speech_data["train"].column_names,  # Remove original columns
+)
 
-
-# lj_speech_data.save_to_disk("transformed_lj_speech")
+lj_speech_data.save_to_disk("transformed_lj_speech")
 lj_speech_data = datasets.load_from_disk("transformed_lj_speech")
 lj_speech_data = lj_speech_data.with_format("jax")
 
@@ -165,7 +128,7 @@ elif INIT_FROM == "resume":
                 checkpoint_state,
             )
 
-    model, discriminator_p, discriminator_s, checkpoint_state = load(CHECKPOINT_PATH)
+    generator, discriminator_p, discriminator_s, checkpoint_state = load(CHECKPOINT_PATH)
     # current_step = checkpoint_state["current_step"]
     current_epoch = checkpoint_state["current_epoch"]
 
@@ -299,7 +262,7 @@ for epoch in range(starting_epoch, N_EPOCHS):
 
         # Print running averages every 10 steps
         # if i % 1 == 0:
-        print(f"\nTiming stats (last 10 steps):")
+        print("\nTiming stats (last 10 steps):")
         print(f"Data loading: {np.mean(timing_stats['data_loading'][-1:]):.3f}s")
         print(f"Training: {np.mean(timing_stats['training'][-1:]):.3f}s")
         print(f"Logging: {np.mean(timing_stats['logging'][-1:]):.3f}s")
@@ -308,4 +271,4 @@ for epoch in range(starting_epoch, N_EPOCHS):
         wait_start = time.time()
 
     # Save model
-    eqx.tree_serialise_leaves("./generator.eqx", generator)
+    eqx.tree_serialise_leaves(os.path.join(CHECKPOINT_PATH, f"generator-{epoch}.eqx"), generator)
