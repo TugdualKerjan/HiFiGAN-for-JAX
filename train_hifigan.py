@@ -15,7 +15,6 @@ from datasets import Array2D, Features, Value
 from jax import config
 from librosa.util import normalize
 from tensorboardX import SummaryWriter
-from tqdm import tqdm
 
 from hifigan import (
     Generator,
@@ -129,7 +128,6 @@ elif INIT_FROM == "resume":
             )
 
     generator, discriminator_p, discriminator_s, checkpoint_state = load(CHECKPOINT_PATH)
-    # current_step = checkpoint_state["current_step"]
     current_epoch = checkpoint_state["current_epoch"]
 
 # Define optimizers
@@ -140,14 +138,14 @@ elif INIT_FROM == "resume":
 #     decay_steps=N_EPOCHS * (train_data.num_rows // BATCH_SIZE) + 100,
 # )
 
-optim1 = optax.chain(optax.clip_by_global_norm(1.0), optax.adam(1e-4, b1=0.8, b2=0.99))
+optim1 = optax.chain(optax.clip_by_global_norm(1.0), optax.adam(LEARNING_RATE, b1=0.8, b2=0.99))
 
 gan_optim = optim1.init(generator)  # type: ignore
 
-optim2 = optax.adam(1e-4)
+optim2 = optax.adam(1e-3)
 scale_optim = optim2.init(discriminator_s)  # type: ignore
 
-optim3 = optax.adam(1e-4)
+optim3 = optax.adam(1e-3)
 period_optim = optim3.init(discriminator_p)  # type: ignore
 
 writer = SummaryWriter(
@@ -166,20 +164,6 @@ def plot_spectrogram(spectrogram):
     return fig
 
 
-# pouet_audio = train_data["audio"]
-# pouet_mel = train_data["mel"]
-
-
-# def get_batches(dataset, batch_size):
-#     print("h")
-#     indices = jnp.arange(len(dataset))
-#     # Optionally shuffle indices here
-
-#     for i in range(0, len(dataset), batch_size):
-#         batch_idx = indices[i : i + batch_size]
-#         yield {"mel": pouet_mel[batch_idx], "audio": pouet_audio[batch_idx]}
-
-
 # batched_data = train_data.with_format("jax").iter(batch_size=BATCH_SIZE)
 step = 0
 # Timing stats dictionary
@@ -188,10 +172,8 @@ timing_stats = defaultdict(list)
 for epoch in range(starting_epoch, N_EPOCHS):
     epoch_start = time.time()
     wait_start = time.time()
-    # print("wtf")
-    # RANDOM, k = jax.random.split(RANDOM)
-    # permutation = jax.random.permutation(k, jnp.arange(0, pouet_audio.shape[0]))
-    for i, batch in enumerate(train_data.iter(batch_size=BATCH_SIZE)):
+    train_data = train_data.shuffle(seed=epoch)
+    for _, batch in enumerate(train_data.iter(batch_size=BATCH_SIZE)):
 
         wait_time = time.time() - wait_start
 
